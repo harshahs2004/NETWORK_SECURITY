@@ -1,0 +1,23 @@
+columns:
+  - NumDots: int64
+  - UrlLength: int64
+  - NumDash: int64
+  - AtSymbol: int64
+  - IpAddress: int64
+  - HttpsInHostname: int64
+  - PathLevel: int64
+  - PathLength: int64
+  - NumNumericChars: int64
+  - Phising: float64
+
+numerical_columns:
+  - NumDots
+  - UrlLength
+  - NumDash
+  - AtSymbol
+  - IpAddress
+  - HttpsInHostname
+  - PathLevel
+  - PathLength
+  - NumNumericChars
+  - Phising
