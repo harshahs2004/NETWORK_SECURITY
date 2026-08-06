@@ -59,6 +59,9 @@ class DataTransformation:
             train_df=DataTransformation.read_data(self.data_validation_artifact.valid_train_file_path)
             test_df=DataTransformation.read_data(self.data_validation_artifact.valid_test_file_path)
 
+            train_df = train_df.dropna(subset=[TARGET_COLUMN])
+            test_df = test_df.dropna(subset=[TARGET_COLUMN])
+
 
             ### training dataframe
             input_feature_train_df=train_df.drop(columns=[TARGET_COLUMN])
