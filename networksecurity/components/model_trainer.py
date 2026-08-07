@@ -23,8 +23,8 @@ from sklearn.ensemble import (
     GradientBoostingClassifier,
     RandomForestClassifier,
 )
-# import mlflow
-# from urllib.parse import urlparse
+import mlflow
+from urllib.parse import urlparse
 
 # import dagshub
 # #dagshub.init(repo_owner='krishnaik06', repo_name='networksecurity', mlflow=True)
@@ -44,67 +44,57 @@ class ModelTrainer:
             self.data_transformation_artifact=data_transformation_artifact
         except Exception as e:
             raise NetworkSecurityException(e,sys)
+
         
-    # def track_mlflow(self,best_model,classificationmetric):
-    #     mlflow.set_registry_uri("https://dagshub.com/krishnaik06/networksecurity.mlflow")
-    #     tracking_url_type_store = urlparse(mlflow.get_tracking_uri()).scheme
-    #     with mlflow.start_run():
-    #         f1_score=classificationmetric.f1_score
-    #         precision_score=classificationmetric.precision_score
-    #         recall_score=classificationmetric.recall_score
+    def track_mlflow(self,best_model,classificationmetric):
+        mlflow.set_registry_uri("https://dagshub.com/krishnaik06/networksecurity.mlflow")
+        tracking_url_type_store = urlparse(mlflow.get_tracking_uri()).scheme
+        with mlflow.start_run():
+            f1_score=classificationmetric.f1_score
+            precision_score=classificationmetric.precision_score
+            recall_score=classificationmetric.recall_score
 
             
 
-    #         mlflow.log_metric("f1_score",f1_score)
-    #         mlflow.log_metric("precision",precision_score)
-    #         mlflow.log_metric("recall_score",recall_score)
-    #         mlflow.sklearn.log_model(best_model,"model")
-    #         # Model registry does not work with file store
-    #         if tracking_url_type_store != "file":
+            mlflow.log_metric("f1_score",f1_score)
+            mlflow.log_metric("precision",precision_score)
+            mlflow.log_metric("recall_score",recall_score)
+            mlflow.sklearn.log_model(best_model,"model")
+            # Model registry does not work with file store
+            if tracking_url_type_store != "file":
 
-    #             # Register the model
-    #             # There are other ways to use the Model Registry, which depends on the use case,
-    #             # please refer to the doc for more information:
-    #             # https://mlflow.org/docs/latest/model-registry.html#api-workflow
-    #             mlflow.sklearn.log_model(best_model, "model", registered_model_name=best_model)
-    #         else:
-    #             mlflow.sklearn.log_model(best_model, "model")
+                # Register the model
+                # There are other ways to use the Model Registry, which depends on the use case,
+                # please refer to the doc for more information:
+                # https://mlflow.org/docs/latest/model-registry.html#api-workflow
+                mlflow.sklearn.log_model(best_model, "model", registered_model_name="phisingdetectionmodel")
+            else:
+                mlflow.sklearn.log_model(best_model, "model")
 
 
         
     def train_model(self,X_train,y_train,x_test,y_test):
         models = {
-                "Random Forest": RandomForestClassifier(verbose=1),
-                "Decision Tree": DecisionTreeClassifier(),
-                "Gradient Boosting": GradientBoostingClassifier(verbose=1),
-                "Logistic Regression": LogisticRegression(verbose=1),
-                "AdaBoost": AdaBoostClassifier(),
-            }
+                "Random Forest": RandomForestClassifier(verbose=1)
+        }
         params={
-            "Decision Tree": {
-                'criterion':['gini', 'entropy', 'log_loss'],
-                # 'splitter':['best','random'],
-                # 'max_features':['sqrt','log2'],
-            },
             "Random Forest":{
-                # 'criterion':['gini', 'entropy', 'log_loss'],
-                
-                # 'max_features':['sqrt','log2',None],
-                'n_estimators': [8,16,32,128,256]
-            },
-            "Gradient Boosting":{
-                # 'loss':['log_loss', 'exponential'],
-                'learning_rate':[.1,.01,.05,.001],
-                'subsample':[0.6,0.7,0.75,0.85,0.9],
-                # 'criterion':['squared_error', 'friedman_mse'],
-                # 'max_features':['auto','sqrt','log2'],
-                'n_estimators': [8,16,32,64,128,256]
-            },
-            "Logistic Regression":{},
-            "AdaBoost":{
-                'learning_rate':[.1,.01,.001],
-                'n_estimators': [8,16,32,64,128,256]
-            }
+
+    "n_estimators": [100, 200],
+
+    "criterion": ["gini", "entropy"],
+
+    "max_depth": [None, 10, 20],
+
+    "min_samples_split": [2, 5],
+
+    "min_samples_leaf": [1, 2],
+
+    "max_features": ["sqrt", "log2"],
+
+    "class_weight": [None, "balanced"]
+
+},
             
         }
         model_report:dict=evaluate_models(X_train=X_train,y_train=y_train,X_test=x_test,y_test=y_test,
@@ -119,18 +109,19 @@ class ModelTrainer:
             list(model_report.values()).index(best_model_score)
         ]
         best_model = models[best_model_name]
+        logging.info(f"best model {best_model}")
         y_train_pred=best_model.predict(X_train)
 
         classification_train_metric=get_classification_score(y_true=y_train,y_pred=y_train_pred)
         
         ## Track the experiements with mlflow
-        ## self.track_mlflow(best_model,classification_train_metric)
+        self.track_mlflow(best_model,classification_train_metric)
 
 
         y_test_pred=best_model.predict(x_test)
         classification_test_metric=get_classification_score(y_true=y_test,y_pred=y_test_pred)
 
-        ## self.track_mlflow(best_model,classification_test_metric)
+        self.track_mlflow(best_model,classification_test_metric)
 
         preprocessor = load_object(file_path=self.data_transformation_artifact.transformed_object_file_path)
             
@@ -154,10 +145,6 @@ class ModelTrainer:
 
         
 
-
-       
-    
-    
         
     def initiate_model_trainer(self)->ModelTrainerArtifact:
         try:
