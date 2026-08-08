@@ -1,11 +1,11 @@
 NSENV
 .env
-# Artifacts/
-# logs/
-# final_model/
-# *.pkl
-# *.npy
-# __pycache__/
-# *.pyc
-# .ipynb_checkpoints/
+Artifacts/
+logs/
+final_model/
+*.pkl
+*.npy
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
 # ex.ipynb

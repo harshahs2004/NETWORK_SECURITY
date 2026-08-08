@@ -11,27 +11,19 @@ from networksecurity.entity.config_entity import ModelTrainerConfig
 
 from networksecurity.utils.ml_utils.model.estimator import NetworkModel
 from networksecurity.utils.main_utils.utils import save_object,load_object
-from networksecurity.utils.main_utils.utils import load_numpy_array_data,evaluate_models
+from networksecurity.utils.main_utils.utils import load_numpy_array_data
 from networksecurity.utils.ml_utils.metric.classification_metric import get_classification_score
 
-from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import r2_score
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import (
-    AdaBoostClassifier,
-    GradientBoostingClassifier,
     RandomForestClassifier,
 )
 import mlflow
-from urllib.parse import urlparse
+import dagshub
+dagshub.init(repo_owner='harshahs2004', repo_name='NETWORK_SECURITY', mlflow=True)
 
-# import dagshub
-# #dagshub.init(repo_owner='krishnaik06', repo_name='networksecurity', mlflow=True)
-
-# os.environ["MLFLOW_TRACKING_URI"]="https://dagshub.com/krishnaik06/networksecurity.mlflow"
-# os.environ["MLFLOW_TRACKING_USERNAME"]="krishnaik06"
-# os.environ["MLFLOW_TRACKING_PASSWORD"]="7104284f1bb44ece21e0e2adb4e36a250ae3251f"
+# os.environ["MLFLOW_TRACKING_URI"]="https://dagshub.com/harshahs2004/NETWORK_SECURITY.mlflow"
+# os.environ["MLFLOW_TRACKING_USERNAME"]="harshahs2004"
+# os.environ["MLFLOW_TRACKING_PASSWORD"]="02403c142bbd2a0417be6a08771cd7100256a58e"
 
 
 
@@ -47,69 +39,42 @@ class ModelTrainer:
 
         
     def track_mlflow(self,best_model,classificationmetric):
-        mlflow.set_registry_uri("https://dagshub.com/krishnaik06/networksecurity.mlflow")
-        tracking_url_type_store = urlparse(mlflow.get_tracking_uri()).scheme
-        with mlflow.start_run():
-            f1_score=classificationmetric.f1_score
-            precision_score=classificationmetric.precision_score
-            recall_score=classificationmetric.recall_score
+            with mlflow.start_run():
+                f1_score = classificationmetric.f1_score
+                precision_score = classificationmetric.precision_score
+                recall_score = classificationmetric.recall_score
 
-            
+                mlflow.log_metric("f1_score", f1_score)
+                mlflow.log_metric("precision", precision_score)
+                mlflow.log_metric("recall_score", recall_score)
 
-            mlflow.log_metric("f1_score",f1_score)
-            mlflow.log_metric("precision",precision_score)
-            mlflow.log_metric("recall_score",recall_score)
-            mlflow.sklearn.log_model(best_model,"model")
-            # Model registry does not work with file store
-            if tracking_url_type_store != "file":
+                mlflow.sklearn.log_model(
+                    best_model,
+                    "model",
+                    registered_model_name="phisingdetectionmodel"
+                )
+        
 
-                # Register the model
-                # There are other ways to use the Model Registry, which depends on the use case,
-                # please refer to the doc for more information:
-                # https://mlflow.org/docs/latest/model-registry.html#api-workflow
-                mlflow.sklearn.log_model(best_model, "model", registered_model_name="phisingdetectionmodel")
-            else:
-                mlflow.sklearn.log_model(best_model, "model")
+    
 
 
         
     def train_model(self,X_train,y_train,x_test,y_test):
         models = {
-                "Random Forest": RandomForestClassifier(verbose=1)
-        }
-        params={
-            "Random Forest":{
-
-    "n_estimators": [100, 200],
-
-    "criterion": ["gini", "entropy"],
-
-    "max_depth": [None, 10, 20],
-
-    "min_samples_split": [2, 5],
-
-    "min_samples_leaf": [1, 2],
-
-    "max_features": ["sqrt", "log2"],
-
-    "class_weight": [None, "balanced"]
-
-},
-            
-        }
-        model_report:dict=evaluate_models(X_train=X_train,y_train=y_train,X_test=x_test,y_test=y_test,
-                                          models=models,param=params)
-        
-        ## To get best model score from dict
-        best_model_score = max(sorted(model_report.values()))
-
-        ## To get best model name from dict
-
-        best_model_name = list(model_report.keys())[
-            list(model_report.values()).index(best_model_score)
-        ]
+        "Random Forest": RandomForestClassifier(
+        n_estimators=200,
+        max_features="log2",
+        min_samples_leaf=2,
+        verbose=1,
+        class_weight='balanced'
+    )
+}
+        best_model_name = "Random Forest"
         best_model = models[best_model_name]
+        best_model.fit(X_train, y_train)
+
         logging.info(f"best model {best_model}")
+        
         y_train_pred=best_model.predict(X_train)
 
         classification_train_metric=get_classification_score(y_true=y_train,y_pred=y_train_pred)
